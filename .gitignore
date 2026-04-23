@@ -28,3 +28,9 @@ htmlcov/
 
 # Internal planning docs (ce:plan output) — keep local, don't publish
 docs/plans/
+
+# Marketing video build artifacts
+marketing/v3.1-launch/node_modules/
+marketing/v3.1-launch/out/
+marketing/*/node_modules/
+marketing/*/out/
