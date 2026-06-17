@@ -97,15 +97,81 @@ def run_auto_setup(config: Dict[str, Any]) -> Dict[str, Any]:
         ytdlp_installed = False
         ytdlp_action = "no_homebrew"
 
+    # Install the free, keyless digg-pp-cli so the Digg source activates.
+    # available_sources() already includes "digg" whenever the binary is on
+    # PATH (pipeline.py), so installing it here is the only NUX gap.
+    digg_installed, digg_action, digg_stderr = _install_digg_cli()
+
     results: Dict[str, Any] = {
         "cookies_found": cookies_found,
         "ytdlp_installed": ytdlp_installed,
         "ytdlp_action": ytdlp_action,
+        "digg_installed": digg_installed,
+        "digg_action": digg_action,
         "env_written": False,
     }
     if ytdlp_action == "install_failed":
         results["ytdlp_stderr"] = brew_stderr
+    if digg_action == "install_failed":
+        results["digg_stderr"] = digg_stderr
     return results
+
+
+# Generous timeout: the install shells out to `npx`, which may download the
+# Printing Press package and build the Go binary over the network.
+DIGG_INSTALL_TIMEOUT = 300
+
+
+def _digg_on_path() -> Optional[str]:
+    """Return the digg-pp-cli path if resolvable, else None.
+
+    Checks PATH first, then the Go bin directory the Printing Press installer
+    writes to (``$GOPATH/bin`` or ``~/go/bin``), which may not be on this
+    process's PATH yet immediately after install.
+    """
+    found = shutil.which("digg-pp-cli")
+    if found:
+        return found
+    candidates = []
+    gopath = os.environ.get("GOPATH")
+    if gopath:
+        candidates.append(Path(gopath) / "bin" / "digg-pp-cli")
+    candidates.append(Path.home() / "go" / "bin" / "digg-pp-cli")
+    for candidate in candidates:
+        if candidate.is_file() and os.access(candidate, os.X_OK):
+            return str(candidate)
+    return None
+
+
+def _install_digg_cli() -> Tuple[bool, str, str]:
+    """Best-effort install of the digg-pp-cli binary.
+
+    Mirrors the yt-dlp/brew auto-install: it never raises, and degrades to a
+    recommend-only outcome when the installer is unavailable. The Digg source
+    is free, keyless, and read-only, so it installs silently like yt-dlp
+    rather than gating behind an opt-in.
+
+    Returns ``(installed, action, stderr)`` where ``action`` is one of:
+      already_installed | installed | install_failed | no_npx
+    ``stderr`` is populated only on ``install_failed``.
+    """
+    if _digg_on_path() is not None:
+        return True, "already_installed", ""
+    if shutil.which("npx") is None:
+        return False, "no_npx", ""
+    try:
+        proc = subprocess.run(
+            ["npx", "-y", "@mvanhorn/printing-press", "install", "digg", "--cli-only"],
+            capture_output=True, text=True, timeout=DIGG_INSTALL_TIMEOUT,
+        )
+    except Exception as exc:
+        logger.warning("npx install digg exception: %s", exc)
+        return False, "install_failed", str(exc)
+    if proc.returncode == 0 and _digg_on_path() is not None:
+        return True, "installed", ""
+    stderr = proc.stderr or "install completed but digg-pp-cli was not found on PATH"
+    logger.warning("npx install digg failed (rc=%s): %s", proc.returncode, stderr)
+    return False, "install_failed", stderr
 
 
 def _open_secret_append(path: Path):
@@ -237,6 +303,20 @@ def get_setup_status_text(results: Dict[str, Any]) -> str:
         lines.append("  - yt-dlp is installed (YouTube search ready)")
     else:
         lines.append("  - yt-dlp not found (install with: brew install yt-dlp)")
+
+    digg_action = results.get("digg_action", "")
+    digg_install_cmd = "npx -y @mvanhorn/printing-press install digg --cli-only"
+    if digg_action == "installed":
+        lines.append("  - Installed Digg CLI (free AI-news clusters source now active)")
+    elif digg_action == "already_installed":
+        lines.append("  - Digg CLI already installed (AI-news clusters active)")
+    elif digg_action == "install_failed":
+        lines.append(f"  - Digg CLI install failed — run `{digg_install_cmd}` manually")
+    elif digg_action == "no_npx":
+        lines.append(
+            "  - Digg CLI not installed (free, optional). Install Node/npx, then: "
+            f"{digg_install_cmd}"
+        )
 
     env_written = results.get("env_written", False)
     if env_written:
