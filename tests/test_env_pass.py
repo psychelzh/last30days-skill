@@ -67,6 +67,12 @@ def test_load_pass_strips_whitespace():
         assert env._load_pass(["FOO"], "last30days/") == {"FOO": "hello-key"}
 
 
+def test_load_pass_strips_trailing_space_before_metadata_lines():
+    with mock.patch("shutil.which", return_value="/usr/bin/pass"), \
+         mock.patch("subprocess.run", return_value=_run_result(0, "sk-secret \nurl: https://x\n")):
+        assert env._load_pass(["OPENAI_API_KEY"], "last30days/") == {"OPENAI_API_KEY": "sk-secret"}
+
+
 def test_load_pass_skips_empty_and_whitespace_only_stdout():
     with mock.patch("shutil.which", return_value="/usr/bin/pass"), \
          mock.patch("subprocess.run", return_value=_run_result(0, "   \n")):
@@ -133,6 +139,7 @@ def clean_env(monkeypatch, tmp_path):
         "SERPER_API_KEY", "OPENROUTER_API_KEY", "PARALLEL_API_KEY",
         "XQUIK_API_KEY", "GOOGLE_API_KEY", "GEMINI_API_KEY",
         "GOOGLE_GENAI_API_KEY", "INCLUDE_SOURCES", "FROM_BROWSER",
+        "LAST30DAYS_PASS_PREFIX", "XIAOHONGSHU_API_BASE",
     ]:
         monkeypatch.delenv(var, raising=False)
     monkeypatch.setattr(env, "CONFIG_FILE", tmp_path / "does-not-exist.env")

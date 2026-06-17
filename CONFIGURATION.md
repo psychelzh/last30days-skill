@@ -106,15 +106,15 @@ everything is already in `.env`.
 | Platform | Source | Store keys with | Lookup convention |
 |---|---|---|---|
 | macOS | Keychain | `scripts/setup-keychain.sh` | service name `last30days-<KEY>` |
-| Linux / Unix (anywhere `pass` exists, incl. macOS) | [`pass`(1)](https://www.passwordstore.org/) | `scripts/setup-pass.sh` | pass path `last30days/<KEY>` |
+| Linux / Unix (anywhere `pass` exists, incl. macOS) | [`pass`(1)](https://www.passwordstore.org/) | `skills/last30days/scripts/setup-pass.sh` | pass path `last30days/<KEY>` |
 
 ```bash
 # macOS Keychain
 ./scripts/setup-keychain.sh                 # interactive; --list / --delete KEY
 
 # pass(1) — Linux/Unix analog
-./scripts/setup-pass.sh                      # interactive; --list / --delete KEY
-./scripts/setup-pass.sh SCRAPECREATORS_API_KEY   # just one key
+./skills/last30days/scripts/setup-pass.sh                      # interactive; --list / --delete KEY
+./skills/last30days/scripts/setup-pass.sh SCRAPECREATORS_API_KEY   # just one key
 ```
 
 The `pass` source honors `PASSWORD_STORE_DIR`. If your store organizes secrets

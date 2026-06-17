@@ -185,8 +185,12 @@ def _load_pass(keys: list[str], prefix: str) -> dict[str, str]:
         try:
             result = subprocess.run(
                 [pass_bin, "show", f"{prefix}{key}"],
-                capture_output=True, text=True, timeout=5,
-                encoding="utf-8", errors="replace",
+                capture_output=True,
+                text=True,
+                timeout=5,
+                encoding="utf-8",
+                errors="replace",
+                stdin=subprocess.DEVNULL,
             )
         except (subprocess.TimeoutExpired, OSError):
             # A timeout (GPG/pinentry hanging) or exec failure isn't a per-key
@@ -196,7 +200,9 @@ def _load_pass(keys: list[str], prefix: str) -> dict[str, str]:
             # returns fast with a non-zero exit and is handled below.
             break
         if result.returncode == 0 and result.stdout.strip():
-            env[key] = result.stdout.strip().splitlines()[0]
+            lines = result.stdout.splitlines()
+            if lines:
+                env[key] = lines[0].strip()
     return env
 
 
