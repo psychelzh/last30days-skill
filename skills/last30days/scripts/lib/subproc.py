@@ -87,7 +87,11 @@ def run_with_timeout(
                 proc.kill()
         except (ProcessLookupError, PermissionError, OSError, AttributeError):
             proc.kill()
-        proc.wait(timeout=5)
+        try:
+            proc.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.wait()
         raise SubprocTimeout(f"Command {cmd[0]} timed out after {timeout}s")
 
     return SubprocResult(
