@@ -1001,6 +1001,23 @@ class TestScTranscriptParsing(unittest.TestCase):
         self.assertNotIn("startMs", result)
         self.assertNotIn("{'text'", result)
 
+    def test_null_text_segment_does_not_emit_none(self):
+        """A present-but-null text field (silent/music segment) must not become "None"."""
+        payload = {
+            "transcript": [
+                {"text": "real words here", "startMs": 0},
+                {"text": None, "startMs": 1000},
+                {"text": "more real words", "startMs": 2000},
+            ],
+            "credits_remaining": 9999,
+        }
+        with mock.patch.object(youtube_yt.http, "get", return_value=payload):
+            result = youtube_yt._sc_fetch_transcript("vidNull", "key")
+        self.assertIsNotNone(result)
+        self.assertNotIn("None", result)
+        self.assertIn("real words here", result)
+        self.assertIn("more real words", result)
+
     def test_plain_string_transcript_preserved(self):
         payload = {"transcript": "just a plain transcript string here", "credits_remaining": 9999}
         with mock.patch.object(youtube_yt.http, "get", return_value=payload):

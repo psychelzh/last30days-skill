@@ -1307,7 +1307,9 @@ def _sc_segment_text(seg: Any) -> str:
     into the output (``{'text': ...}`` garbage).
     """
     if isinstance(seg, dict):
-        return str(seg.get("text", ""))
+        # `or ""` (not a get default): a present-but-null `text` returns None,
+        # which would stringify to the literal "None" for silent/music segments.
+        return str(seg.get("text") or "")
     return str(seg)
 
 
