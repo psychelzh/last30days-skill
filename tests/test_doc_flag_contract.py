@@ -40,13 +40,16 @@ def test_html_publish_reference_prompts_for_password_choice():
     text = HTML_REFERENCE.read_text(encoding="utf-8")
     publish_section = text[text.index("## Optional hosted publishing"):text.index("## What ends up in the HTML file")]
     assert "Respect any existing user, project, or host preference for HTML publishing first" in publish_section
-    assert "Offer `ht-ml.app` only as the fallback hosted option" in publish_section
-    assert "Local HTML save remains the default and should not be delayed" in publish_section
-    assert "Want a hosted link too?" in publish_section
-    assert "Do not upload until the user answers" in publish_section
-    assert "ask whether they want password protection before uploading" in publish_section
-    assert "**Public link** - proceed with `--publish-html` only" in publish_section
-    assert "**Password-protected link** - ask them to provide the shared password" in publish_section
+    assert "If multiple publishing options are available, show each as its own choice" in publish_section
+    assert "label `ht-ml.app` as supporting optional password protection" in publish_section
+    assert "Show the absolute saved path" in publish_section
+    assert "Open HTML file" in publish_section
+    assert "Done for now" in publish_section
+    assert "Do not upload until the user chooses a publishing option" in publish_section
+    assert "ask a second question" in publish_section
+    assert "**Public link** - publish without a password" in publish_section
+    assert "**Password-protected link** - ask the user to type the shared password" in publish_section
+    assert "repeat the shared password they selected" in publish_section
     assert "LAST30DAYS_PUBLISH_PASSWORD" in publish_section
     assert '--output "$HTML_PATH"' in publish_section
     assert "<HTML_PATH>.publish.json" in publish_section

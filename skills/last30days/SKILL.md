@@ -1771,6 +1771,13 @@ If the research output does not contain the footer block (rare, only when all so
 
 **SELF-CHECK before displaying**: Re-read your "What I learned" section. Does it match what the research ACTUALLY says? If you catch yourself projecting your own knowledge instead of the research, rewrite it. Then verify: (a) no `##` headers in your response body, (b) no em-dashes or en-dashes anywhere, (c) the engine footer block appears verbatim between KEY PATTERNS and the invitation.
 
+**Saved artifact access flow:** after the engine has created a file, decide how the user should get access to it based on what they asked for:
+
+- **Normal report:** the Markdown raw artifact already appears in the engine footer (`📎 Raw results saved to ...`). The chat synthesis is the primary user-facing report, so do not open the raw Markdown file automatically and do not ask a follow-up access question. The path line is enough.
+- **Markdown file requested:** if the user explicitly asked for a Markdown file/export, treat the saved Markdown path as the deliverable. Provide the path and open it locally when the host can safely open local files and the request implies viewing it now. Do not offer hosted publishing for Markdown.
+- **HTML file requested:** follow `references/save-html-brief.md`. Save the local HTML first, show the absolute path, then present explicit next-step choices: open the HTML file, publish to an available/preferred HTML publishing service, or done for now.
+- **Share/publish requested:** sharing means hosted HTML, not Markdown. Save the local HTML first and show the path. Then respect existing publishing preferences, show available publishing choices, and ask for public-vs-password only when the selected service requires that choice (for `ht-ml.app`, ask whether password protection should be used; if yes, ask the user to type the shared password before publishing). Never block creation of the local file on the hosting decision.
+
 **LAST - Invitation (adapt to QUERY_TYPE):**
 
 **CRITICAL: Every invitation MUST include 2-3 specific example suggestions based on what you ACTUALLY learned from the research.** Don't be generic - show the user you absorbed the content by referencing real things from the results.

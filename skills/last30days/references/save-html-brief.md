@@ -83,28 +83,30 @@ fi
 
 ## Optional hosted publishing
 
-Only publish when the user explicitly asks for a hosted/shareable web link or confirms they want one after an opt-in offer. Local HTML save remains the default and should not be delayed by an optional hosting choice unless the user's original request specifically asked for a hosted URL.
+Only publish after the local HTML file has already been saved and the user chooses a publish option. The local HTML save is always first, and its absolute path is always shown before any publish/upload step.
 
-Respect any existing user, project, or host preference for HTML publishing first. If the user already has a preferred publisher or internal sharing workflow, use that. Offer `ht-ml.app` only as the fallback hosted option when no preference is already established.
+Respect any existing user, project, or host preference for HTML publishing first. If the user already has a preferred publisher or internal sharing workflow, include that option. If multiple publishing options are available, show each as its own choice and include `ht-ml.app` as one option; label `ht-ml.app` as supporting optional password protection. If no preference exists, use `ht-ml.app` as the fallback publishing option.
 
 Use this decision flow:
 
-- If the user asked only for a local HTML file/export, save the local HTML and stop at the artifact handoff. Do not offer hosted publishing.
-- If the user asked for sharing convenience but did not specifically ask for a hosted URL, save the local HTML first. After the artifact handoff, offer one opt-in hosted-link question only when no existing publishing preference is available: `Want a hosted link too? I can use ht-ml.app as a fallback; it is public and may be indexed unless password-protected. Reply public or password: <shared password>.`
-- If the user explicitly asked for a hosted URL/publish/share link, save the local HTML first, then ask the password/public question before uploading unless they already specified public hosting or supplied a shared password.
+- Save the local HTML file.
+- Show the absolute saved path.
+- Then proactively present next-step choices:
+  1. Open HTML file
+  2. Publish to `<preferred/configured service>`; if `ht-ml.app` is shown, say password protection is available
+  3. Done for now
+- Do not upload until the user chooses a publishing option.
 
-Before publishing, tell the user:
+When publishing to `ht-ml.app`, ask a second question:
 
-- `ht-ml.app` publishes a public URL by default, and public pages may be crawled or indexed.
-- A shared password can be set with `--publish-password`; use a unique non-personal password, not the user's real password.
-- The local HTML file is still saved first. If upload fails, the local file remains usable.
+- **Public link** - publish without a password.
+- **Password-protected link** - ask the user to type the shared password in free form, then publish with that password.
 
-Then ask whether they want password protection before uploading. Accept either branch:
+Before the `ht-ml.app` choice, tell the user that public pages may be crawled or indexed, and that password protection is available. If the user chooses password protection, use a unique shared password they provide for this report; do not use their own account password.
 
-- **Public link** - proceed with `--publish-html` only.
-- **Password-protected link** - ask them to provide the shared password, then pass it through `LAST30DAYS_PUBLISH_PASSWORD`. Do not put passwords in command-line arguments unless the user explicitly accepts that exposure risk.
+Agents should discover the current publishing mechanics for the selected service when needed, including by visiting the service site, rather than hard-coding detailed service-specific instructions in chat. For the built-in `ht-ml.app` path, the engine supports `--publish-html`; on the password-protected branch, pass the shared password through `LAST30DAYS_PUBLISH_PASSWORD` rather than command-line arguments.
 
-When the user opts in and answers the password-protection prompt, add `--publish-html` to the same `--emit=html` command. Use `--output "$HTML_PATH"` rather than shell redirection so the engine can write the `.publish.json` companion metadata next to the local HTML file. On the password-protected branch, set `LAST30DAYS_PUBLISH_PASSWORD` in the subprocess environment instead of passing `--publish-password` in the shell command.
+When the user chooses the built-in `ht-ml.app` path, add `--publish-html` to the same `--emit=html` command. Use `--output "$HTML_PATH"` rather than shell redirection so the engine can write the `.publish.json` companion metadata next to the local HTML file. On the password-protected branch, set `LAST30DAYS_PUBLISH_PASSWORD` in the subprocess environment instead of passing `--publish-password` in the shell command.
 
 ```bash
 LAST30DAYS_PUBLISH_PASSWORD="${PUBLISH_PASSWORD:-}" \
@@ -117,7 +119,7 @@ LAST30DAYS_PUBLISH_PASSWORD="${PUBLISH_PASSWORD:-}" \
   >/dev/null
 ```
 
-The hosted URL appears on stderr as `[last30days] Published HTML to https://...`. Append a second concise line to the chat response: `🌐 Hosted brief: <url>`. The engine writes URL metadata to `<HTML_PATH>.publish.json`. The provider may return an `update_key`; treat it as secret. The engine deliberately does not write the update key to stdout, the HTML artifact, or `.publish.json` companion metadata.
+The hosted URL appears on stderr as `[last30days] Published HTML to https://...`. Confirm the result with the hosted URL. If the user chose password protection, also repeat the shared password they selected so they can send the URL and password together. The engine writes URL metadata to `<HTML_PATH>.publish.json`. The provider may return an `update_key`; treat it as secret. The engine deliberately does not write the update key to stdout, the HTML artifact, or `.publish.json` companion metadata.
 
 ## Chat handoff after saving
 
@@ -127,19 +129,20 @@ Use the mode that matches the request.
 
 When HTML is the requested deliverable - whether by `--emit=html`, `--emit:html`, `--html`, or natural-language phrasing - do **not** paste the full Markdown report back into chat after saving the artifact. The user asked for an HTML deliverable; repeating the Markdown makes the run feel like a normal report with an attachment bolted on.
 
-Respond with a concise handoff:
+Respond with a concise handoff that includes the next-step choices:
 
 ```text
 🌐 last30days v{VERSION} · synced {YYYY-MM-DD}
 
 📎 Shareable brief saved to <absolute HTML path>
 
-I saved the full HTML brief locally. It is not uploaded or published anywhere.
+What do you want to do next?
+1. Open HTML file
+2. Publish to <available HTML publishing service> (<service-specific note, e.g. ht-ml.app supports optional password protection>)
+3. Done for now
 ```
 
-If the host can safely open local files for the user and doing so matches the user's request, open the HTML file after it is written, leave the saved-path line in chat, and add `Opened locally.` Let the host choose the correct OS-specific mechanism; do not print a menu of shell commands. If opening fails or the host is headless, do not treat that as a failed report; show the path and say the file is ready to open in a browser.
-
-If the request was about sharing convenience rather than a purely local export, and no existing publishing preference applies, add the opt-in hosted-link question from the optional publishing section after the local handoff. Do not upload until the user answers.
+If the user chooses open, open the HTML file when the host can safely open local files, leave the saved-path line in chat, and add `Opened locally.` Let the host choose the correct OS-specific mechanism; do not print a menu of shell commands. If opening fails or the host is headless, do not treat that as a failed report; show the path and say the file is ready to open in a browser.
 
 ### Normal report plus HTML copy
 
@@ -147,9 +150,14 @@ When the user asked for a normal `/last30days` report and also asked for an HTML
 
 ```text
 📎 Shareable brief saved to <absolute HTML path>
+
+What do you want to do next?
+1. Open HTML file
+2. Publish to <available HTML publishing service> (<service-specific note, e.g. ht-ml.app supports optional password protection>)
+3. Done for now
 ```
 
-If the host can safely open local files, open it for the user when that matches the request; otherwise the saved-path line is enough. Do not upload in this flow. Hosted sharing is a separate opt-in capability and must not happen automatically; if the user framed the HTML copy as a sharing convenience and no existing publishing preference applies, add the same single hosted-link opt-in question after the artifact block.
+If the user chooses open, open it when the host can safely open local files; otherwise the saved-path line is enough. Do not upload in this flow unless the user chooses a publishing option.
 
 ## What ends up in the HTML file
 
@@ -184,7 +192,7 @@ The engine will try to reuse `~/.config/last30days/last-report.json` for that se
 - Do NOT silently overwrite an existing file. The `--emit=html` output is written via a shell redirect (`>| "$HTML_PATH"`), which OVERWRITES the collision-guarded path — use `>|` not `>` because `set -o noclobber` refuses plain `>` when the file already exists. The collision guard in step 2 handles same-topic re-runs: if `{slug}-brief.html` already exists it date-suffixes to `{slug}-brief-YYYY-MM-DD.html`. Always report whichever path the redirect actually used in the chat handoff.
 - Do NOT include the data quality warning text in the temp file or in your final chat line. Warnings are an engine-stderr concern, not an artifact concern.
 - Do NOT publish, upload, or send the HTML to a third-party service as part of the local save flow.
-- Do NOT publish to `ht-ml.app` merely because HTML was requested. Hosted publishing is a separate opt-in step.
+- Do NOT publish to any service merely because HTML was requested. Show the saved path and next-step choices first; publishing requires the user to choose a publish option.
 - Do NOT block a local HTML export on a hosting decision unless the user explicitly asked for a hosted URL.
 - Do NOT paste or store the `update_key` in chat, Markdown, HTML, raw output, or companion metadata.
 

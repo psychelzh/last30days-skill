@@ -34,6 +34,9 @@ def test_html_deliverable_is_artifact_first_not_full_markdown_repeat():
     assert 'echo "📎 Shareable brief saved to $HTML_PATH"' not in text
     assert "do **not** paste the full Markdown report back into chat" in text
     assert "The user asked for an HTML deliverable" in text
+    assert "What do you want to do next?" in text
+    assert "1. Open HTML file" in text
+    assert "3. Done for now" in text
 
 
 def test_html_handoff_opens_locally_without_os_command_menu():
@@ -47,10 +50,22 @@ def test_html_handoff_opens_locally_without_os_command_menu():
 
 def test_html_save_flow_does_not_publish_or_upload():
     text = SAVE_HTML.read_text(encoding="utf-8")
-    assert "Do not upload in this flow" in text
-    assert "Hosted sharing is a separate opt-in capability" in text
+    assert "Do not upload in this flow unless the user chooses a publishing option" in text
     assert "Do NOT publish, upload, or send the HTML to a third-party service" in text
     assert "Do NOT block a local HTML export on a hosting decision" in text
+    assert "Show the saved path and next-step choices first" in text
+
+
+def test_markdown_and_html_access_paths_are_separate():
+    text = SKILL_MD.read_text(encoding="utf-8")
+    start = text.index("**Saved artifact access flow:**")
+    section = text[start:start + 1600]
+
+    assert "**Markdown file requested:**" in section
+    assert "Do not offer hosted publishing for Markdown" in section
+    assert "**HTML file requested:**" in section
+    assert "show the absolute path" in section
+    assert "open the HTML file, publish to an available/preferred HTML publishing service, or done for now" in section
 
 
 def test_follow_up_turn_preserves_html_deliverable_mode():
