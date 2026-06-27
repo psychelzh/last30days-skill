@@ -44,13 +44,28 @@ def configure_windows_utf8_stdio() -> None:
     """Keep Unicode footers readable on Windows consoles."""
     if os.name != "nt":
         return
+    output_is_console = any(stream.isatty() for stream in (sys.stdout, sys.stderr))
+    input_is_console = sys.stdin.isatty()
     try:
         import ctypes
 
         kernel32 = ctypes.windll.kernel32
-        kernel32.SetConsoleOutputCP(65001)
-        kernel32.SetConsoleCP(65001)
-    except Exception:
+        original_output_cp = kernel32.GetConsoleOutputCP() if output_is_console else None
+        original_input_cp = kernel32.GetConsoleCP() if input_is_console else None
+        if output_is_console:
+            kernel32.SetConsoleOutputCP(65001)
+        if input_is_console:
+            kernel32.SetConsoleCP(65001)
+
+        def restore_console_code_pages() -> None:
+            if original_output_cp:
+                kernel32.SetConsoleOutputCP(original_output_cp)
+            if original_input_cp:
+                kernel32.SetConsoleCP(original_input_cp)
+
+        if original_output_cp or original_input_cp:
+            atexit.register(restore_console_code_pages)
+    except (AttributeError, OSError):
         # Stream reconfiguration below still helps redirected output and modern
         # Python consoles even when the Win32 API is unavailable.
         pass
