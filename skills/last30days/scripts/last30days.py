@@ -39,10 +39,27 @@ def ensure_supported_python(version_info: tuple[int, int, int] | object | None =
 
 ensure_supported_python()
 
-if os.name == "nt":
+
+def configure_windows_utf8_stdio() -> None:
+    """Keep Unicode footers readable on Windows consoles."""
+    if os.name != "nt":
+        return
+    try:
+        import ctypes
+
+        kernel32 = ctypes.windll.kernel32
+        kernel32.SetConsoleOutputCP(65001)
+        kernel32.SetConsoleCP(65001)
+    except Exception:
+        # Stream reconfiguration below still helps redirected output and modern
+        # Python consoles even when the Win32 API is unavailable.
+        pass
     for stream in (sys.stdout, sys.stderr):
         if hasattr(stream, "reconfigure"):
             stream.reconfigure(encoding="utf-8", errors="replace")
+
+
+configure_windows_utf8_stdio()
 
 SCRIPT_DIR = Path(__file__).parent.resolve()
 sys.path.insert(0, str(SCRIPT_DIR))
