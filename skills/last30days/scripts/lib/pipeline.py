@@ -12,6 +12,7 @@ from shutil import which
 from typing import Any
 
 from . import (
+    arxiv,
     bird_x,
     bluesky,
     dates,
@@ -41,9 +42,11 @@ from . import (
     schema,
     signals,
     snippet,
+    techmeme,
     threads,
     tiktok,
     truthsocial,
+    trustpilot,
     xai_x,
     xiaohongshu_api,
     xquik,
@@ -99,6 +102,9 @@ MOCK_AVAILABLE_SOURCES = [
     "threads",
     "pinterest",
     "digg",
+    "arxiv",
+    "techmeme",
+    "trustpilot",
     "jobs",
     "linkedin",
 ]
@@ -147,6 +153,14 @@ def available_sources(
     available.append("github")
     if which("digg-pp-cli"):
         available.append("digg")
+    # arXiv is default-on when its Printing Press CLI is installed (zero auth).
+    # The adapter relevance-and-recency gates so it stays quiet off-topic.
+    if which("arxiv-pp-cli"):
+        available.append("arxiv")
+    # Techmeme is default-on when its CLI is installed (zero auth; sub-second
+    # local sync before each run's first search).
+    if which("techmeme-pp-cli"):
+        available.append("techmeme")
     if env.is_bluesky_available(config):
         available.append("bluesky")
     if env.is_truthsocial_available(config):
@@ -176,6 +190,14 @@ def available_sources(
         "linkedin" in include_sources or (requested_sources and "linkedin" in requested_sources)
     ):
         available.append("linkedin")
+    # Trustpilot: opt-in additive source via INCLUDE_SOURCES=trustpilot (same
+    # consent pattern as Perplexity/LinkedIn). Off by default -- unlike arXiv and
+    # Techmeme, which are zero-auth, it can spawn a one-time headless-Chrome WAF
+    # cookie harvest on a brand topic, so activating it is the user's choice.
+    if which("trustpilot-pp-cli") and (
+        "trustpilot" in include_sources or (requested_sources and "trustpilot" in requested_sources)
+    ):
+        available.append("trustpilot")
     if requested_sources and "xiaohongshu" in requested_sources and env.is_xiaohongshu_available(config):
         available.append("xiaohongshu")
     if env.is_threads_available(config):
@@ -223,6 +245,9 @@ def diagnose(
     external_commands = {
         "yt-dlp": bool(which("yt-dlp")),
         "digg-pp-cli": bool(which("digg-pp-cli")),
+        "arxiv-pp-cli": bool(which("arxiv-pp-cli")),
+        "techmeme-pp-cli": bool(which("techmeme-pp-cli")),
+        "trustpilot-pp-cli": bool(which("trustpilot-pp-cli")),
         "gh": bool(which("gh")),
     }
     credential_destinations = {
@@ -1457,6 +1482,24 @@ def _retrieve_stream(
         # _finalize_items_by_source so it runs on the items that actually
         # survive dedupe rather than on top-K of the raw fanout.
         return items, {}
+    if source == "arxiv":
+        result = arxiv.search_arxiv(subquery.search_query, from_date, to_date, depth=depth)
+        # Relevance keys off the stable research topic, not the per-subquery
+        # search_query, so off-topic narrowing does not let weak matches through.
+        relevance_topic = raw_topic or topic or subquery.search_query
+        return arxiv.parse_arxiv_response(result, query=relevance_topic), {}
+    if source == "techmeme":
+        result = techmeme.search_techmeme(subquery.search_query, from_date, to_date, depth=depth)
+        relevance_topic = raw_topic or topic or subquery.search_query
+        return techmeme.parse_techmeme_response(result, query=relevance_topic), {}
+    if source == "trustpilot":
+        # Brand-shape gate keys off the stable research topic, not the narrowed
+        # per-subquery search_query, so the company is detected consistently.
+        relevance_topic = raw_topic or topic or subquery.search_query
+        result = trustpilot.search_trustpilot(
+            relevance_topic, from_date, to_date, depth=depth, config=config
+        )
+        return trustpilot.parse_trustpilot_response(result, query=relevance_topic), {}
     if source == "bluesky":
         result = bluesky.search_bluesky(subquery.search_query, from_date, to_date, depth=depth, config=config)
         return bluesky.parse_bluesky_response(result), {}
@@ -1594,6 +1637,47 @@ def _mock_stream_results(source: str, subquery: schema.SubQuery) -> tuple[list[d
                 "posts": [],
                 "relevance": 0.71,
                 "why_relevant": "Mock Digg cluster",
+            },
+        ],
+        "arxiv": [
+            {
+                "id": "http://arxiv.org/abs/2606.00001v1",
+                "title": f"A Survey of {subquery.search_query}",
+                "url": "https://arxiv.org/abs/2606.00001v1",
+                "summary": f"We present a comprehensive study of {subquery.search_query} and its recent advances.",
+                "author": "Ada Lovelace et al.",
+                "authors": ["Ada Lovelace", "Alan Turing"],
+                "date": dates.get_date_range(20)[0],
+                "engagement": {},
+                "relevance": 0.86,
+                "why_relevant": "Mock arXiv paper",
+            },
+        ],
+        "techmeme": [
+            {
+                "id": "https://www.techmeme.com/260627/p1",
+                "title": f"Major development in {subquery.search_query} reshapes the industry",
+                "url": "https://www.techmeme.com/260627/p1",
+                "source_name": "techcrunch.com",
+                "date": dates.get_date_range(1)[0],
+                "engagement": {},
+                "relevance": 0.83,
+                "why_relevant": "Mock Techmeme headline",
+            },
+        ],
+        "trustpilot": [
+            {
+                "id": "example.com",
+                "title": f"{subquery.search_query}: TrustScore 3.4",
+                "url": "https://www.trustpilot.com/review/example.com",
+                "summary": f"Across recent reviews, customers were split on {subquery.search_query}: some praised support, others cited delays.",
+                "name": subquery.search_query,
+                "trustScore": 3.4,
+                "reviewCount": 128,
+                "date": dates.get_date_range(1)[0],
+                "engagement": {"reviews": 128, "trustScore": 3.4},
+                "relevance": 0.8,
+                "why_relevant": "Mock Trustpilot sentiment",
             },
         ],
         "jobs": [
