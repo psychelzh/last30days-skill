@@ -55,9 +55,9 @@ class TestOnboardingContract(unittest.TestCase):
     def test_modal_flow_stage_order(self):
         """Welcome -> setup modal -> cookie consent -> SC offer -> opt-in -> picker."""
         anchors = [
-            "Step 1 - Welcome (REQUIRED FIRST",
+            "Welcome to /last30days!",  # welcome pitch, embedded in the setup modal
             "How would you like to set up?",
-            "scan your browser",  # cookie-consent modal
+            "your browser's x.com cookies",  # cookie-consent modal
             "Want to add TikTok and Instagram?",  # SC offer
             "Which ScrapeCreators sources do you want on?",  # source opt-in
             "What do you want to research first?",  # topic picker
@@ -70,8 +70,24 @@ class TestOnboardingContract(unittest.TestCase):
     def test_modal_uses_askuserquestion(self):
         self.assertIn("AskUserQuestion", self.modal)
 
+    def test_cookie_consent_names_all_installed_clis(self):
+        """The cookie-consent modal must not frame X cookies as instead-of the CLIs,
+        and must name arXiv + Techmeme (not just 'YouTube + Digg') since auto-setup
+        installs all four regardless of the cookie choice."""
+        consent = self.modal[self.modal.find("your browser's x.com cookies"):]
+        consent = consent[: consent.find("Full Disk Access")]  # bound to the consent modal
+        for cli in ("yt-dlp", "Digg", "arXiv", "Techmeme"):
+            self.assertIn(cli, consent, cli)
+        # The "skip X" option still installs the CLIs (not framed as X-or-CLIs).
+        self.assertIn("Skip X - just the CLIs", consent)
+
+    def test_github_option_advertises_auto_clipboard(self):
+        """The recommended GitHub option tells the user the code is auto-copied to
+        their clipboard, so they just paste it."""
+        self.assertIn("clipboard automatically", self.modal)
+
     def test_modal_cookie_consent_before_setup(self):
-        consent = self.modal.find("scan your browser")
+        consent = self.modal.find("your browser's x.com cookies")
         setup = self.modal.find("last30days.py setup")
         self.assertGreater(consent, -1, "no cookie-consent modal in modal flow")
         self.assertGreater(setup, -1, "no setup invocation in modal flow")
@@ -129,7 +145,7 @@ class TestOnboardingContract(unittest.TestCase):
         self.assertIn("Digg", self.prose)
         self.assertIn("Digg", self.manual)
         # The Auto-setup modal option names every installed CLI, not just two.
-        self.assertIn("yt-dlp (YouTube), Digg, arXiv, and Techmeme CLIs", self.modal)
+        self.assertIn("yt-dlp (YouTube), Digg, arXiv, Techmeme", self.modal)
 
     # --- Credit count = 10,000, no conflicting numbers in onboarding ---
 
@@ -181,11 +197,17 @@ class TestOnboardingContract(unittest.TestCase):
         """Full Disk Access is framed as Safari-only, not the default path."""
         self.assertNotIn("scan your browser (Firefox/Safari)", self.modal)
 
-    def test_welcome_relayed_from_engine(self):
-        """The modal relays the engine-owned welcome verbatim (single source of
-        truth) rather than inlining it, so it can't be skipped or drift."""
-        self.assertIn("last30days.py --welcome", self.modal)
-        self.assertIn("VERBATIM", self.modal)
+    def test_welcome_embedded_in_modal(self):
+        """The welcome pitch lives INSIDE the setup modal (the only always-visible
+        surface), not as a separate message/command that Claude Code folds away.
+        The engine --welcome command is kept for the non-modal prose flow."""
+        # Pitch is in the modal question.
+        self.assertIn("Welcome to /last30days!", self.modal)
+        self.assertIn("How would you like to set up?", self.modal)
+        # The modal flow explicitly does NOT run a separate --welcome command.
+        self.assertIn("Do NOT run a separate `--welcome`", self.modal)
+        # The non-modal flow still uses the engine welcome command.
+        self.assertIn("last30days.py --welcome", self.prose)
 
     def test_stocktwits_surfaced_as_conditional(self):
         """StockTwits is advertised in the engine welcome as a ticker/crypto-gated
@@ -213,14 +235,13 @@ class TestOnboardingContract(unittest.TestCase):
 
     # --- Welcome must render before the modal (U1) ---
 
-    def test_welcome_is_required_before_modal(self):
-        """Step 1 mandates the welcome message before any modal; the old
-
-        'IMMEDIATELY call AskUserQuestion' wording (which induced skipping the
-        welcome) is gone.
-        """
-        self.assertIn("REQUIRED FIRST", self.modal)
-        self.assertIn("BEFORE calling any AskUserQuestion", self.modal)
+    def test_welcome_pitch_is_in_the_modal_question(self):
+        """The welcome pitch names the core sources inside the modal question, so
+        the user sees it without expanding folded tool output. The old skip-prone
+        'IMMEDIATELY call AskUserQuestion' wording stays gone."""
+        # Pitch names the core sources right in the modal.
+        for source in ("Reddit", "X,", "YouTube", "TikTok"):
+            self.assertIn(source, self.modal, source)
         self.assertNotIn("Then IMMEDIATELY call AskUserQuestion", self.modal)
 
     # --- Device code surfaced with a clipboard-paste hint (U3) ---
