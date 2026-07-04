@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.9.2] - 2026-07-03
+
+### Fixed
+
+- Trustpilot source returned 0 items on company topics: the engine passed raw topic names to a domain-keyed CLI (`info ThriftBooks` -> HTTP 404) and parallel subqueries raced concurrent Chrome WAF-cookie harvests. Company names now resolve to their Trustpilot review-page domain via the CLI's search (per-topic cache; name-match mandatory, ambiguous cases fall back rather than misattributing another company's reviews), a new `--trustpilot-domain` flag pins the domain explicitly (verbatim, bypasses the brand-shape gate, per-entity `trustpilot_domain` in `--competitors-plan`), the WAF session warms once per 240s window behind a lock at first fetch, Trustpilot is capped to one fetch per run and excluded from the thin-source retry, and headless `--auto-resolve` fills a verified domain hint. SKILL.md Step 0.5d documents the resolution flow. ([#745](https://github.com/mvanhorn/last30days-skill/pull/745))
+
 ## [3.9.1] - 2026-07-03
 
 ### Fixed
