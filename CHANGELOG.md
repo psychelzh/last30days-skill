@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.13.0] - 2026-07-12
+
+### Added
+
+- Xiaohongshu (RED) documented as a first-class requested-only source, with auto-detection of a logged-in local browser-session service: last30days probes `http://localhost:18060` then `http://host.docker.internal:18060` when the source is opted in; `XIAOHONGSHU_API_BASE` remains the explicit override. Zero probing and zero behavior change for users who have not opted in. ([#766](https://github.com/mvanhorn/last30days-skill/pull/766), thanks @yuzhiyang1)
+- DripStack as an opt-in source: premium financial newsletter and analyst-writeup search (free public API, no key), complementing StockTwits retail sentiment and Polymarket odds with professional analyst signal. Ships default-off; requests route through the shared HTTP layer and honor the 30-day window. ([#791](https://github.com/mvanhorn/last30days-skill/pull/791), thanks @zimoo354)
+- Persistent opt-in for both new sources via `INCLUDE_SOURCES=xiaohongshu` / `INCLUDE_SOURCES=dripstack` in `.env`, matching the LinkedIn/Perplexity pattern; per-run `--search` still works. ([#812](https://github.com/mvanhorn/last30days-skill/pull/812))
+
+### Fixed
+
+- Whitespace in comma-separated `INCLUDE_SOURCES` values no longer silently breaks any source's persisted opt-in. ([#812](https://github.com/mvanhorn/last30days-skill/pull/812))
+- DripStack article bodies (subtitle/lede) now reach ranking and synthesis instead of only the capped snippet; the Xiaohongshu doctor prescription no longer recommends an env pin that disables auto-probing. ([#811](https://github.com/mvanhorn/last30days-skill/pull/811))
+- Release hygiene: SKILL.md body header and uv.lock are regenerated with the version bump (both were missed in the 3.12.0 cut and hotfixed on main).
+
 ## [3.12.0] - 2026-07-12
 
 ### Added
