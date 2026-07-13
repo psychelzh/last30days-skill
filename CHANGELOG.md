@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.13.1] - 2026-07-12
+
+### Added
+
+- Doctor `library` line: reports how many saved research briefs the local library holds (cheap glob, never a full parse), so the report's "From your library" block is explained on the health surface. The block itself now carries a one-line explainer with the `LAST30DAYS_LIBRARY_CONTEXT=off` opt-out. ([#815](https://github.com/mvanhorn/last30days-skill/pull/815))
+
+### Fixed
+
+- Doctor no longer reports X as `Off` when the bird CLI plus browser-cookie consent serve X fine at runtime: the cookie-backed path now reads **Ready**, with an honest note that the session is verified only at run time and `XAI_API_KEY` is the key-backed alternative. ([#815](https://github.com/mvanhorn/last30days-skill/pull/815))
+- Doctor's YouTube note no longer reads as broken when yt-dlp is healthy: it affirms search + transcripts work, scopes the transcription key to caption-free videos, and correctly attributes comment text to ScrapeCreators (key + `youtube_comments` opt-in) with an actionable fix line - never to yt-dlp. ([#815](https://github.com/mvanhorn/last30days-skill/pull/815))
+- Doctor's Web line on Claude Code now says host-native web search is active instead of `degraded ... keyless`, and names the host rather than an env var the user never set. Messaging only; engine web behavior unchanged. ([#815](https://github.com/mvanhorn/last30days-skill/pull/815))
+- The report footer no longer prints `no results` lines for zero-item sources; failure signal stays in the Source Coverage / Partial Coverage evidence blocks, and the `Raw results saved to` line still renders when every source is empty. ([#815](https://github.com/mvanhorn/last30days-skill/pull/815))
+
 ## [3.13.0] - 2026-07-12
 
 ### Added
